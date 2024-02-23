@@ -1,0 +1,3 @@
+ansible rstudioservers -b --ask-become-pass -m shell -a 'Rscript -e "devtools::install_github(\"sta344-644-fa23/dukestm\", upgrade=\"never\")"'
+
+ansible-playbook gh-runners.yml -b --ask-become-pass --check

@@ -1,0 +1,10 @@
+---
+- hosts: sta199
+  become: yes
+  vars_prompt:
+    - name: runner_token
+      prompt: Enter the GH runner token
+    - name: org_url
+      prompt: Enter the url for your GH organization
+  roles:
+  - gh-runners

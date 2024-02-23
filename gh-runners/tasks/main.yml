@@ -1,0 +1,74 @@
+---
+# tasks file for posit-workbench
+
+- name: Run whoami without become.
+  command: whoami
+  changed_when: false
+  become: false
+  register: whoami
+
+- name: Install docker
+  apt:
+    name:
+      - docker.io
+    state: latest
+
+- name: Start docker service
+  service:
+    name: docker
+    state: started
+
+- name: Add user to docker group
+  ansible.builtin.user:
+    name: "{{ whoami.stdout }}"
+    group: "{{ whoami.stdout }}"
+    groups: docker
+    append: yes
+
+- name: Download local runner tar.gz
+  get_url:
+    url: "{{ runner_url }}"
+    dest: "{{ runner_path}}/{{runner_file}}"
+  become: false
+
+- name: Create folders
+  file:
+    path: "~/runner{{ item }}"
+    state: directory
+  loop: "{{ range(0, runner_n, 1) | list }}"
+  become: false
+
+- name: Extract runner
+  ansible.builtin.unarchive:
+    src: "{{ runner_path}}/{{runner_file}}"
+    dest: "~/runner{{ item }}/"
+    remote_src: true
+    creates: "~/runner{{ item }}/run.sh"
+  loop: "{{ range(0, runner_n, 1) | list }}"
+  become: false
+
+- name: Configure runners 
+  shell: "./config.sh --unattended --url {{ org_url }} --token {{ runner_token }} --name `hostname -s`-runner{{ item }}"
+  args:
+    chdir: "~/runner{{ item }}/"
+    creates: "~/runner{{ item }}/.runner"
+  loop: "{{ range(0, runner_n, 1) | list }}"
+  become: false
+
+- name: Install runner services
+  command: "./svc.sh install"
+  become: true
+  args:
+    chdir: "~{{ whoami.stdout }}/runner{{ item }}/"
+  loop: "{{ range(0, runner_n, 1) | list }}"
+  
+
+- name: Start runner services
+  command: "./svc.sh start"
+  become: true
+  args:
+    chdir: "~{{ whoami.stdout }}/runner{{ item }}/"
+  loop: "{{ range(0, runner_n, 1) | list }}"
+  
+
+    
