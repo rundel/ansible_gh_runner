@@ -1,7 +1,10 @@
 ---
-- hosts: sta199
+- #hosts: cr173
+  hosts: sta199
   become: yes
   vars_prompt:
+    - name: course
+      prompt: Enter the course name
     - name: runner_token
       prompt: Enter the GH runner token
     - name: org_url
