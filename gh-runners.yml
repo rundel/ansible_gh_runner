@@ -1,6 +1,6 @@
 ---
-- #hosts: cr173
-  hosts: sta199
+- hosts: cr173
+  #hosts: sta199
   become: yes
   vars_prompt:
     - name: course
