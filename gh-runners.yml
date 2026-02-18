@@ -1,5 +1,5 @@
 ---
-- hosts: cr173
+- hosts: sta199
   become: yes
   vars_prompt:
     - name: course

@@ -7,11 +7,75 @@
   become: false
   register: whoami
 
-#- name: Install docker
-#  apt:
-#    name:
-#      - docker.io
-#    state: latest
+- name: Check if docker is installed
+  command: which docker
+  register: docker_check
+  changed_when: false
+  failed_when: false
+
+- name: Install Docker (Debian)
+  when: docker_check.rc != 0 and ansible_facts['os_family'] == "Debian"
+  block:
+    - name: Install Docker prerequisites
+      apt:
+        name:
+          - ca-certificates
+          - curl
+          - gnupg
+        state: present
+        update_cache: true
+
+    - name: Create Docker keyring directory
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Download Docker GPG key
+      get_url:
+        url: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+
+    - name: Add Docker apt repository
+      apt_repository:
+        repo: "deb [arch={{ ansible_architecture | replace('x86_64', 'amd64') | replace('aarch64', 'arm64') }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable"
+        state: present
+        filename: docker
+
+    - name: Install Docker packages
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: true
+
+- name: Install Docker (RedHat)
+  when: docker_check.rc != 0 and ansible_facts['os_family'] == "RedHat"
+  block:
+    - name: Install dnf-plugins-core
+      dnf:
+        name: dnf-plugins-core
+        state: present
+
+    - name: Add Docker repository
+      command: dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+      args:
+        creates: /etc/yum.repos.d/docker-ce.repo
+
+    - name: Install Docker packages
+      dnf:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
 
 - name: Start docker service
   service:
@@ -31,44 +95,51 @@
     dest: "{{ runner_path}}/{{runner_file}}"
   become: false
 
+- name: Create runner base dir
+  file:
+    path: "{{ runner_base_dir }}"
+    state: directory
+    mode: '0777'
+  become: true
+
 - name: Create folders
   file:
-    path: "~/{{ course }}/runner{{ item }}"
+    path: "{{ runner_base_dir }}/{{ course }}/runner{{ item }}"
     state: directory
-  loop: "{{ range(0, runner_n, 1) | list }}"
+  loop: "{{ range(0, runner_n | int, 1) | list }}"
   become: false
 
 - name: Extract runner
   ansible.builtin.unarchive:
     src: "{{ runner_path}}/{{ runner_file }}"
-    dest: "~/{{ course }}/runner{{ item }}/"
+    dest: "{{ runner_base_dir }}/{{ course }}/runner{{ item }}/"
     remote_src: true
-    creates: "~/{{ course }}/runner{{ item }}/run.sh"
-  loop: "{{ range(0, runner_n, 1) | list }}"
+    creates: "{{ runner_base_dir }}/{{ course }}/runner{{ item }}/run.sh"
+  loop: "{{ range(0, runner_n | int, 1) | list }}"
   become: false
 
-- name: Configure runners 
+- name: Configure runners
   shell: "./config.sh --unattended --url {{ org_url }} --token {{ runner_token }} --name `hostname -s`-runner{{ item }}"
   args:
-    chdir: "~/{{ course }}/runner{{ item }}/"
-    creates: "~/{{ course }}/runner{{ item }}/.runner"
-  loop: "{{ range(0, runner_n, 1) | list }}"
+    chdir: "{{ runner_base_dir }}/{{ course }}/runner{{ item }}/"
+    creates: "{{ runner_base_dir }}/{{ course }}/runner{{ item }}/.runner"
+  loop: "{{ range(0, runner_n | int, 1) | list }}"
   become: false
 
 - name: Install runner services
   command: "./svc.sh install"
   become: true
   args:
-    chdir: "~{{ whoami.stdout }}/{{ course }}/runner{{ item }}/"
-  loop: "{{ range(0, runner_n, 1) | list }}"
+    chdir: "{{ runner_base_dir | regex_replace('^~$', '~' + whoami.stdout) }}/{{ course }}/runner{{ item }}/"
+  loop: "{{ range(0, runner_n | int, 1) | list }}"
   
 
 - name: Start runner services
   command: "./svc.sh start"
   become: true
   args:
-    chdir: "~{{ whoami.stdout }}/{{ course }}/runner{{ item }}/"
-  loop: "{{ range(0, runner_n, 1) | list }}"
+    chdir: "{{ runner_base_dir | regex_replace('^~$', '~' + whoami.stdout) }}/{{ course }}/runner{{ item }}/"
+  loop: "{{ range(0, runner_n | int, 1) | list }}"
   
 
     
