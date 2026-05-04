@@ -16,12 +16,29 @@
       default: "4"
       private: no
   vars:
-    runner_version: "2.331.0"
     runner_file: "actions-runner-linux-x64-{{ runner_version }}.tar.gz"
     runner_url: "https://github.com/actions/runner/releases/download/v{{ runner_version }}/{{ runner_file }}"
     runner_path: /tmp/
     runner_base_dir: "~"
   tasks:
+    - name: Fetch latest runner release from GitHub
+      uri:
+        url: https://api.github.com/repos/actions/runner/releases/latest
+        return_content: yes
+      register: latest_release
+      delegate_to: localhost
+      become: false
+      when: runner_version is not defined
+
+    - name: Resolve runner_version to latest release
+      set_fact:
+        runner_version: "{{ latest_release.json.tag_name | regex_replace('^v', '') }}"
+      when: runner_version is not defined
+
+    - name: Show runner version in use
+      debug:
+        msg: "Using GitHub Actions runner v{{ runner_version }}"
+
     - name: Run whoami without become.
       command: whoami
       changed_when: false

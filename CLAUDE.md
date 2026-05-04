@@ -19,13 +19,29 @@ This will prompt for:
 - Organization URL
 - Number of runners (default: 4)
 
-### Clean Up Runners
-The `cleanup.sh` script uninstalls runner services and removes runner directories. Note: This is currently hardcoded for 4 runners (runner0-runner3).
+### Remove Runners
+```bash
+ansible-playbook runner_remove.yml -e target_hosts=sta199 -b --ask-become-pass
+```
+
+This will prompt for:
+- Parent folder containing the `runner*` directories (e.g. `~/sta199`)
+- Removal token from `https://github.com/organizations/<org>/settings/actions/runners` (the "Remove" dialog on any runner) — leave blank to skip deregistration
+
+Behavior depending on whether the token is provided:
+- Token provided: runs `./config.sh remove --token <token>` in each runner folder, which deregisters the runner from the GitHub org and cleans up local config/services
+- Token blank: runs `./svc.sh uninstall` in each runner folder for local-only cleanup (the runners will remain listed as offline in the org until removed manually)
+
+In both cases the parent folder is then recursively deleted. The `target_hosts` extra-var selects which inventory group to operate on (required, since `vars_prompt` runs after `hosts:` is evaluated).
+
+### Clean Up Runners (legacy)
+The [cleanup.sh](cleanup.sh) script uninstalls runner services and removes runner directories. Note: This is currently hardcoded for 4 runners (runner0-runner3). Prefer `runner_remove.yml` for new work.
 
 ## Architecture
 
 ### Playbook Structure
 - [gh-runners.yml](gh-runners.yml) - Self-contained playbook with host targeting, variable prompts, default vars, and all tasks for setting up runners
+- [runner_remove.yml](runner_remove.yml) - Self-contained playbook to uninstall runner services and remove the parent runner folder on a target host
 
 ### Inventory
 - [servers.ini](servers.ini) - Host definitions organized by groups (e.g., `sta199`, `cr173`, `mon`, `mine`)
@@ -43,8 +59,8 @@ The `cleanup.sh` script uninstalls runner services and removes runner directorie
 
 ### Configuration Variables
 Defined in the `vars` block of [gh-runners.yml](gh-runners.yml):
-- `runner_version`: GitHub Actions runner version (currently 2.331.0)
-- `runner_file` and `runner_url`: Constructed from version for downloading
+- `runner_version`: GitHub Actions runner version. Not declared by default; the playbook queries `https://api.github.com/repos/actions/runner/releases/latest` (delegated to the controller) and sets it to the latest release tag. Pin a specific version by passing `-e runner_version=2.331.0` or by adding `runner_version: "2.331.0"` to the `vars` block.
+- `runner_file` and `runner_url`: Constructed from `runner_version` for downloading
 - `runner_base_dir`: Base directory for runner installation (default: `~`, can be overridden per host group in `servers.ini`)
 
 Prompted at runtime (defined in [gh-runners.yml](gh-runners.yml)):
@@ -54,7 +70,7 @@ Prompted at runtime (defined in [gh-runners.yml](gh-runners.yml)):
 - `runner_n`: Number of runners per host (default: 4)
 
 ### Target Hosts
-The playbook currently targets the `sta199` host group (see line 2 of [gh-runners.yml](gh-runners.yml)). Change this to target different host groups defined in [servers.ini](servers.ini).
+[gh-runners.yml](gh-runners.yml) hardcodes `hosts: sta199` (see line 2) — edit this to target different host groups defined in [servers.ini](servers.ini). [runner_remove.yml](runner_remove.yml) instead reads the target group from the `target_hosts` extra-var (`-e target_hosts=...`).
 
 ## Important Notes
 

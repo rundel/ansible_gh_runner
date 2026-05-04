@@ -5,6 +5,11 @@
     - name: runner_folder
       prompt: Enter the parent folder containing the runner directories (e.g. ~/sta199)
       private: no
+    - name: removal_token
+      prompt: Enter GH runner removal token (leave blank to skip deregistering from the org)
+      private: yes
+      default: ""
+      unsafe: yes
   tasks:
     - name: Run whoami without become
       command: whoami
@@ -23,12 +28,21 @@
         file_type: directory
       register: runner_dirs
 
-    - name: Uninstall runner services
+    - name: Deregister runners from GitHub and clean up local config/services
+      command: "./config.sh remove --token {{ removal_token }}"
+      args:
+        chdir: "{{ item.path }}"
+      loop: "{{ runner_dirs.files }}"
+      become: false
+      when: removal_token | length > 0
+
+    - name: Uninstall runner services (local-only cleanup, no token provided)
       command: "./svc.sh uninstall"
       args:
         chdir: "{{ item.path }}"
       loop: "{{ runner_dirs.files }}"
       become: true
+      when: removal_token | length == 0
 
     - name: Remove runner folder
       file:

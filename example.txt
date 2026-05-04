@@ -1,1 +1,0 @@
-ansible-playbook gh-runners.yml -b --ask-become-pass
