@@ -1,8 +1,0 @@
----
-# defaults file for gh-runners
-
-runner_version: "2.331.0"
-runner_file: 'actions-runner-linux-x64-{{ runner_version }}.tar.gz'
-runner_url: 'https://github.com/actions/runner/releases/download/v{{ runner_version }}/{{ runner_file }}'
-runner_path: /tmp/
-runner_base_dir: "~"
