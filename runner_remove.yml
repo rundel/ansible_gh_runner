@@ -1,0 +1,37 @@
+---
+- hosts: "{{ target_hosts }}"
+  become: yes
+  vars_prompt:
+    - name: runner_folder
+      prompt: Enter the parent folder containing the runner directories (e.g. ~/sta199)
+      private: no
+  tasks:
+    - name: Run whoami without become
+      command: whoami
+      changed_when: false
+      become: false
+      register: whoami
+
+    - name: Resolve runner folder path
+      set_fact:
+        folder: "{{ runner_folder | regex_replace('^~', '/home/' + whoami.stdout) }}"
+
+    - name: Find runner directories
+      find:
+        paths: "{{ folder }}"
+        patterns: "runner*"
+        file_type: directory
+      register: runner_dirs
+
+    - name: Uninstall runner services
+      command: "./svc.sh uninstall"
+      args:
+        chdir: "{{ item.path }}"
+      loop: "{{ runner_dirs.files }}"
+      become: true
+
+    - name: Remove runner folder
+      file:
+        path: "{{ folder }}"
+        state: absent
+      become: true

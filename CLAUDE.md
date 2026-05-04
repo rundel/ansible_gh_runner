@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-This repository contains an Ansible role for deploying and managing multiple GitHub Actions self-hosted runners on remote VMs (primarily Duke's Research Toolkit VMs). The automation handles installing Docker if needed, downloading the GitHub Actions runner, configuring multiple runner instances per host, and installing them as systemd services.
+This repository contains an Ansible playbook for deploying and managing multiple GitHub Actions self-hosted runners on remote VMs (primarily Duke's Research Toolkit VMs). The automation handles installing Docker if needed, downloading the GitHub Actions runner, configuring multiple runner instances per host, and installing them as systemd services.
 
 ## Key Commands
 
@@ -24,13 +24,8 @@ The `cleanup.sh` script uninstalls runner services and removes runner directorie
 
 ## Architecture
 
-### Ansible Role Structure
-- **Playbook**: [gh-runners.yml](gh-runners.yml) - Main playbook with host targeting and variable prompts
-- **Role directory**: `gh-runners/` - Contains the main Ansible role
-  - [tasks/main.yml](gh-runners/tasks/main.yml) - Core tasks for setting up runners
-  - [defaults/main.yml](gh-runners/defaults/main.yml) - Default variables including runner version and base directory
-  - [handlers/main.yml](gh-runners/handlers/main.yml) - Event handlers (currently empty)
-  - [meta/main.yml](gh-runners/meta/main.yml) - Role metadata
+### Playbook Structure
+- [gh-runners.yml](gh-runners.yml) - Self-contained playbook with host targeting, variable prompts, default vars, and all tasks for setting up runners
 
 ### Inventory
 - [servers.ini](servers.ini) - Host definitions organized by groups (e.g., `sta199`, `cr173`, `mon`, `mine`)
@@ -47,7 +42,7 @@ The `cleanup.sh` script uninstalls runner services and removes runner directorie
 8. Installs and starts systemd services for each runner
 
 ### Configuration Variables
-In [gh-runners/defaults/main.yml](gh-runners/defaults/main.yml):
+Defined in the `vars` block of [gh-runners.yml](gh-runners.yml):
 - `runner_version`: GitHub Actions runner version (currently 2.331.0)
 - `runner_file` and `runner_url`: Constructed from version for downloading
 - `runner_base_dir`: Base directory for runner installation (default: `~`, can be overridden per host group in `servers.ini`)
